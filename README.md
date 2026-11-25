@@ -1,7 +1,14 @@
 # Smart Parking Lot Digital Twin (Simulation-based)
 
 **Project 5 — Domain: Smart City — Level: Intermediate**
-Digital Twin لجراج فيه 12 مكان (Zone A + Zone B، كل Zone عليها ESP32). الـ **Physical layer كله Simulation** بدل الهاردوير، وبيكلم الـ Twin بنفس بروتوكول الـ MQTT اللي الـ ESP32 الحقيقي هيستخدمه. يعني لو جبت هاردوير بعدين، الـ Twin والـ Dashboard مش هيتغيروا خالص.
+
+A real-time digital twin of a 12-slot parking lot (Zone A + Zone B, one ESP32 per zone). It shows slot occupancy on a live 2D map, guides drivers to free slots, logs entries and exits, forecasts hourly occupancy and controls the entry barrier automatically.
+
+The **physical layer is fully simulated** instead of using real hardware. The simulator speaks exactly the same MQTT protocol as the ESP32 firmware, so the twin engine and dashboard work unchanged with simulated nodes, with the firmware running in the Wokwi ESP32 simulator, or with real boards.
+
+![Live map](docs/screenshots/dashboard_map.png)
+
+## Architecture
 
 ```
 ┌──────────────── Physical layer (SIMULATED) ────────────────┐
@@ -23,130 +30,142 @@ Digital Twin لجراج فيه 12 مكان (Zone A + Zone B، كل Zone عليه
 └────────────────────────────────────────────────────────────┘
 ```
 
-## تشغيل سريع (Windows / Linux / Mac)
+## Quick start (Windows / Linux / macOS)
 
-محتاج Python 3.10 أو أحدث.
+Requires Python 3.10+.
 
 ```bash
+git clone https://github.com/Mohamedadel-prog/smart-parking-digital-twin.git
 cd smart-parking-digital-twin
 python -m venv .venv
-.venv\Scripts\activate          # Windows   (Linux/Mac: source .venv/bin/activate)
+.venv\Scripts\activate          # Windows   (Linux/macOS: source .venv/bin/activate)
 pip install -r requirements.txt
 python run_all.py
 ```
 
-هيفتح لوحده `http://localhost:8000`. الأمر ده بيشغّل 3 processes:
+The dashboard opens at `http://localhost:8000`. `run_all.py` starts three processes:
 
-| Process | Command | الدور |
+| Process | Command | Role |
 |---|---|---|
-| MQTT broker | `python -m broker.embedded_broker` | Broker مكتوب بـ Python (مش محتاج تسطّب Mosquitto) |
-| Twin engine | `python -m twin.engine` | الـ Twin + REST API + WebSocket + Dashboard |
-| Physical simulator | `python -m simulator.physical_sim` | بيعمل نفس شغل الـ ESP32s والـ sensors والعربيات |
+| MQTT broker | `python -m broker.embedded_broker` | Pure-Python broker (no Mosquitto install needed) |
+| Twin engine | `python -m twin.engine` | Digital twin + REST API + WebSocket + dashboard |
+| Physical simulator | `python -m simulator.physical_sim` | Virtual ESP32 nodes, sensors and vehicles |
 
-Options مفيدة:
+Useful options:
 
 ```bash
-python run_all.py --speed 120      # الوقت أسرع (60 = كل ثانية حقيقية = دقيقة)
-python run_all.py --reset          # يمسح الـ database ويعمل history جديد
-python run_all.py --no-broker      # لو شغال Mosquitto (docker compose up -d)
-python run_all.py --no-sim         # لو الـ physical layer جاي من Wokwi
+python run_all.py --speed 120      # faster clock (60 = 1 real second is 1 simulated minute)
+python run_all.py --reset          # delete the database and regenerate history (use before a demo)
+python run_all.py --no-broker      # use an existing Mosquitto (docker compose up -d)
+python run_all.py --no-sim         # physical layer comes from Wokwi / real ESP32
 ```
 
-الـ simulated day بيبدأ الساعة 06:00 علشان تشوف الـ morning rush والجراج بيتملي والبوابة بتقفل. أول مرة الـ Twin بيعمل 14 يوم **synthetic history** بنفس الـ demand model علشان الـ forecasting يشتغل من أول دقيقة، وبعد كده الداتا الـ live بتتسجل فوقيه.
+The simulated day starts at 06:00 so the morning rush, the lot filling up and the barrier closing are visible within a few minutes. On first start the twin generates 14 days of **synthetic history** with the same demand model so forecasting works immediately. Live data is then recorded on top of it.
 
-## الـ Objectives اتعملت إزاي
+## How the objectives are met
 
-| Objective (من الكتالوج) | التنفيذ |
+| Objective | Implementation |
 |---|---|
-| Detect vehicle presence in at least 6 slots | 12 slot. كل HC-SR04 بيتعمله 5 pings ثم **median filter** ثم **hysteresis** (<100 cm مشغول، >150 cm فاضي) ثم **debounce** (قراءتين). لو الـ echo مش valid في أغلب العينات بيطلع **sensor fault** |
-| Live 2D map with colour-coded slots | SVG map: فاضي / مشغول / Reserved / Maintenance / Sensor fault / Offline، والعربيات والـ queue والـ barrier بيتحركوا live |
-| Guide drivers to free slots | الـ Twin بيختار أقرب slot فاضي من البوابة (ومش بيبعت عربيتين لنفس المكان) وبيبعته للبوابة، فيظهر على الـ LCD «Go to A3» ومسار متحرك على الخريطة |
-| Log entries/exits | SQLite: جدول `events` (entry / exit / denied / rejected / slot changes / commands / alerts) |
-| Forecast occupancy per hour | Moving average، Seasonal moving average، Hybrid (seasonal + level correction)، و Prophet (اختياري). فيه backtest بيحسب MAE / RMSE |
-| Control entry barrier automatically | البوابة بتفتح بس لو الكارت مسجل **و** فيه مكان فاضي. لو الجراج اتملى بتقفل والـ LCD يكتب PARKING FULL. وفيه **safety interlock**: الـ barrier مستحيل ينزل والـ IR beam مقطوع |
+| Detect vehicle presence in at least 6 slots | 12 slots. Each HC-SR04 is pinged 5 times → **median filter** → **hysteresis** (< 100 cm occupied, > 150 cm free) → **debounce** (2 confirmations). Too few valid echoes → **sensor fault** |
+| Live 2D map with colour-coded slots | SVG map: free / occupied / reserved / maintenance / sensor fault / offline, with live cars, queue and barrier animation |
+| Guide drivers to free slots | The twin picks the nearest free slot to the gate (never sending two cars to the same slot) and publishes it to the gate: LCD shows "Go to A3" and an animated path appears on the map |
+| Log entries/exits | SQLite `events` table (entry / exit / denied / rejected / slot changes / commands / alerts) |
+| Forecast occupancy per hour | Moving average, seasonal moving average, hybrid (seasonal + level correction) and optional Prophet, with a rolling backtest (MAE / RMSE) |
+| Control the entry barrier automatically | Opens only for a registered card **and** when space is available; closes automatically when full (LCD: PARKING FULL). **Safety interlock**: the arm never lowers while the IR beam is blocked |
 
-## Digital Twin features زيادة (بتفرق في الـ Demo)
+## Additional digital-twin features
 
-- **Sensor fusion**: عدد العربيات جوه (gate counters) − العربيات اللي الـ sensors شايفاها = العربيات اللي لسه بتتحرك جوه. بالطريقة دي الـ free count مبيكدبش.
-- **Edge autonomy**: لو الـ Twin أو النت وقع، البوابة بتكمل بـ local counting (LCD: Offline mode).
-- **What-if simulation**: Monte-Carlo (40 run) بيبدأ من الحالة الحالية للجراج. تقدر تجرب مثلاً demand +50%، أو قفل 2 slots، أو parking time أقل، وتقارن بالـ baseline.
-- **Remote commands**: Force open / close / auto للبوابة، و Reserve / Maintenance لأي slot.
-- **Twin fidelity** (ميزة الـ simulation): الـ simulator بيبعت ground truth، فالـ Twin بيقيس دقته: state agreement ‎%، و MQTT latency، والـ error في عدد العربيات جوه.
-- **Fault injection**: من الـ Dashboard تقدر تبوّظ sensor وتشوف الـ alert والـ LED بيرمش.
+- **Sensor fusion**: vehicles inside (gate counters) − vehicles seen by slot sensors = vehicles still moving inside, so the free count is never over-reported.
+- **Edge autonomy**: if the twin or network is down, the gate continues with local counting (LCD: "Offline mode").
+- **What-if simulation**: Monte-Carlo (40 runs) starting from the current lot state, e.g. +50 % demand, 2 slots closed, shorter parking times — compared with a baseline.
+- **Remote commands**: force open / close / auto for the barrier, reserve / maintenance for any slot.
+- **Twin fidelity** (enabled by simulation): the simulator publishes ground truth, and the twin measures its own state agreement (%), MQTT latency and vehicles-inside error.
+- **Fault injection**: break a sensor from the dashboard and watch the alert and blinking LED.
 
-## سيناريو الـ Demo (5 دقايق)
+![Forecast and what-if](docs/screenshots/dashboard_forecast_whatif.png)
 
-1. شغّل `python run_all.py --reset` والساعة 06:00. الجراج فاضي والـ guidance بيشاور على A1.
-2. استنى لحد 08:00–09:00 (حوالي 3 دقايق على 60×). العربيات بتدخل والـ LCD بيقول لكل سواق يروح فين.
-3. لما الجراج يتملى: البوابة بتقفل لوحدها، الـ LCD يكتب **PARKING FULL**، الـ queue تزيد، والعربيات اللي زهقت بتتسجل `rejected`. ده الـ Expected Demo Result: *gate automatically closes when full*.
-4. Forecast chart: الـ actual قصاد الـ predicted، والـ MAE، ووقت الـ peak المتوقع.
-5. What-if: خلي الـ demand 150% واقفل 2 slots واعمل Run. هيوريك كام عربية هترجع وكام ساعة الجراج هيبقى full.
-6. دوس على slot واعمل *Inject sensor fault* هيطلع alert، أو *Maintenance* والـ slot هيخرج من الـ free count.
-7. اعمل *Force close* للبوابة وبعدين *Auto*، والـ command هيتسجل في الـ log.
+## Demo script (5 minutes)
+
+1. Run `python run_all.py --reset`. It is 06:00, the lot is empty and guidance points to A1.
+2. Wait until 08:00–09:00 (about 3 minutes at 60×). Cars enter and the LCD tells each driver where to park.
+3. When the lot fills up, the barrier closes automatically, the LCD shows **PARKING FULL**, the queue grows and drivers who give up are logged as `rejected` — the expected result *"gate automatically closes when full"*.
+4. Forecast chart: actual vs predicted, MAE and expected peak time.
+5. What-if: set demand to 150 %, close 2 slots, run, and read the extra turned-away cars and hours at full.
+6. Click a slot → *Inject sensor fault* (alert) or *Maintenance* (removed from the free count).
+7. *Force close* the barrier, then back to *Auto* — the command appears in the log.
 
 ## REST API
 
-Swagger على `http://localhost:8000/docs`.
+Interactive docs (Swagger) at `http://localhost:8000/docs`.
 
-| Method | Endpoint | الوصف |
+| Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/state` | Snapshot كامل (slots, gate, KPIs, alerts, fidelity) |
-| GET | `/api/slots`, `/api/slots/{id}` | حالة الـ slots |
+| GET | `/api/state` | Full snapshot (slots, gate, KPIs, alerts, fidelity) |
+| GET | `/api/slots`, `/api/slots/{id}` | Slot states |
 | GET | `/api/events?limit=&type=` | Entry/exit log |
 | GET | `/api/history?hours=48` | Hourly occupancy |
 | GET | `/api/forecast?method=hybrid&horizon=12` | Forecast + backtest + metrics |
-| GET | `/api/forecast/compare` | مقارنة دقة كل الـ methods (جدول جاهز للتقرير) |
-| GET | `/api/summary` | KPIs اليوم |
+| GET | `/api/forecast/compare` | Accuracy of every forecasting method |
+| GET | `/api/summary` | Today's KPIs |
 | POST | `/api/gate` `{"mode":"auto\|open\|closed"}` | Remote barrier command |
 | POST | `/api/slots/{id}/mode` `{"mode":"normal\|reserved\|maintenance"}` | Slot command |
-| POST | `/api/whatif` `{"demand":1.5,"closed_slots":2,"stay_mult":1,"hours":12}` | What-if |
-| POST | `/api/sim` `{"speed":120,"demand":1.3,"rush":6,"fault":"A3","clear_fault":"A3","pause":true}` | التحكم في الـ simulator |
+| POST | `/api/whatif` `{"demand":1.5,"closed_slots":2,"stay_mult":1,"hours":12}` | What-if scenario |
+| POST | `/api/sim` `{"speed":120,"demand":1.3,"rush":6,"fault":"A3","clear_fault":"A3","pause":true}` | Simulator control |
 | WS | `/ws` | Live snapshots |
 
-## Wokwi mode (ESP32 firmware فعلي على simulator)
+## Wokwi mode (ESP32 firmware on a simulator)
 
-الـ firmware في `firmware/esp32_parking_node/` (نسخة جاهزة لـ Wokwi في `firmware/wokwi/`). ده اللي يتحط في فصل **Codes** في التقرير.
+The Arduino firmware is in `firmware/esp32_parking_node/`, with a Wokwi-ready copy in `firmware/wokwi/`.
 
-1. ادخل https://wokwi.com واعمل New project، واختار ESP32.
-2. حط `sketch.ino` و `diagram.json` و `libraries.txt` من `firmware/wokwi/`.
-3. غيّر `PREFIX` في الـ sketch لاسم unique، مثلاً `smartparking-mohamed`.
-4. على جهازك شغّل الـ Twin على نفس الـ public broker مع Zone A بس:
+1. Open https://wokwi.com and create a new ESP32 project.
+2. Copy in `sketch.ino`, `diagram.json` and `libraries.txt` from `firmware/wokwi/`.
+3. Change `PREFIX` in the sketch to something unique, e.g. `smartparking-yourname`.
+4. On your PC, run the twin against the same public broker with Zone A only:
    ```bash
    # Windows PowerShell
-   $env:MQTT_HOST="broker.hivemq.com"; $env:TOPIC_PREFIX="smartparking-mohamed"; $env:LOT_ZONES="A"
+   $env:MQTT_HOST="broker.hivemq.com"; $env:TOPIC_PREFIX="smartparking-yourname"; $env:LOT_ZONES="A"
    python run_all.py --no-broker --no-sim
    ```
-5. في Wokwi: غيّر الـ distance بتاع أي HC-SR04 (دوس عليه وحرك الـ slider)، وهتلاقي الـ slot اتغير على الـ Dashboard. زرار **Scan registered card** بيفتح البوابة، و **Exit-lane IR** بيسجل خروج، والـ slide switch بيمثل IR beam تحت البوابة.
+5. In Wokwi, click an HC-SR04 and move its distance slider — the slot changes on the dashboard. **Scan registered card** opens the barrier, **Exit-lane IR** logs an exit and the slide switch simulates the IR beam under the barrier.
 
-> Wokwi مفيهوش RC522، علشان كده الكارت متمثل بزراير. على الهاردوير الحقيقي فعّل `#define USE_RC522`.
-> الـ firmware ما اتعملهوش compile هنا. جرّبه في Wokwi الأول، ولو طلع compile error ابعتهولي.
+> Wokwi has no RC522 part, so cards are simulated with push buttons. On real hardware enable `#define USE_RC522`.
 
-## Configuration (`config.py` أو environment variables)
+## Configuration
 
-| Variable | Default | معناه |
+Set in `config.py` or as environment variables:
+
+| Variable | Default | Meaning |
 |---|---|---|
-| `MQTT_HOST` / `MQTT_PORT` | `127.0.0.1` / `1883` | الـ Broker |
-| `TOPIC_PREFIX` | `smartparking` | أول جزء في كل topic |
-| `LOT_ZONES` | `A,B` | Zones (كل zone = ESP32 + 6 sensors) |
-| `SIM_SPEED` | `60` | سرعة الوقت |
-| `SIM_START_HOUR` | `6` | اليوم بيبدأ الساعة كام |
-| `HISTORY_DAYS` | `14` | أيام الـ synthetic history |
+| `MQTT_HOST` / `MQTT_PORT` | `127.0.0.1` / `1883` | MQTT broker |
+| `TOPIC_PREFIX` | `smartparking` | Root of every topic |
+| `LOT_ZONES` | `A,B` | Zones (each zone = one ESP32 + 6 sensors) |
+| `SIM_SPEED` | `60` | Simulation clock speed |
+| `SIM_START_HOUR` | `6` | Hour the simulated day starts |
+| `HISTORY_DAYS` | `14` | Days of synthetic history |
 
-## هيكل المشروع
+## Project structure
 
 ```
-config.py                    إعدادات مشتركة
-run_all.py                   تشغيل كل حاجة بأمر واحد
+config.py                    shared configuration
+run_all.py                   starts everything with one command
 broker/embedded_broker.py    MQTT broker (amqtt)
-common/model.py              demand model (arrivals/stays) – مشترك بين الـ sim والـ history والـ what-if
-common/layout.py             geometry بتاع الـ slots
-simulator/physical_sim.py    Physical + edge layer simulation
-twin/engine.py               Twin engine + FastAPI
+common/model.py              demand model (arrivals / parking durations), shared by sim, history and what-if
+common/layout.py             slot geometry
+simulator/physical_sim.py    physical + edge layer simulation
+twin/engine.py               twin engine + FastAPI
 twin/forecasting.py          MA / seasonal / hybrid / Prophet + backtest
 twin/whatif.py               Monte-Carlo what-if
 twin/history.py              synthetic history bootstrap
-twin/storage.py              SQLite
-dashboard/                   HTML/CSS/JS (من غير CDN، يشتغل offline)
+twin/storage.py              SQLite persistence
+dashboard/                   HTML/CSS/JS (no CDN, works offline)
 firmware/                    ESP32 Arduino firmware + Wokwi diagram
-docs/architecture.md         تفاصيل للتقرير (topics، payloads، algorithms)
+docs/architecture.md         MQTT contract, algorithms, pin map, results
 ```
+
+## Tech stack
+
+Python · paho-mqtt · amqtt · FastAPI · Uvicorn · SQLite · vanilla JS/SVG · ESP32 (Arduino) · Wokwi
+
+## Author
+
+**Mohamed Adel** — [LinkedIn](https://www.linkedin.com/in/mohamed-adel08/)
