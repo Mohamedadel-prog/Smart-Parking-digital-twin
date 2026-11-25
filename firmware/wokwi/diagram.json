@@ -1,0 +1,537 @@
+{
+  "version": 1,
+  "author": "Mohamed Adel",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 220,
+      "left": -10,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "us1",
+      "top": -140,
+      "left": -260,
+      "attrs": {
+        "distance": "40"
+      }
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "us2",
+      "top": -140,
+      "left": -95,
+      "attrs": {
+        "distance": "255"
+      }
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "us3",
+      "top": -140,
+      "left": 70,
+      "attrs": {
+        "distance": "255"
+      }
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "us4",
+      "top": -140,
+      "left": 235,
+      "attrs": {
+        "distance": "40"
+      }
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "us5",
+      "top": -140,
+      "left": 400,
+      "attrs": {
+        "distance": "255"
+      }
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "us6",
+      "top": -140,
+      "left": 565,
+      "attrs": {
+        "distance": "255"
+      }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo",
+      "top": 210,
+      "left": 300,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-lcd1602",
+      "id": "lcd",
+      "top": 370,
+      "left": 300,
+      "attrs": {
+        "pins": "i2c"
+      }
+    },
+    {
+      "type": "wokwi-neopixel",
+      "id": "px1",
+      "top": 60,
+      "left": -230,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel",
+      "id": "px2",
+      "top": 60,
+      "left": -65,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel",
+      "id": "px3",
+      "top": 60,
+      "left": 100,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel",
+      "id": "px4",
+      "top": 60,
+      "left": 265,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel",
+      "id": "px5",
+      "top": 60,
+      "left": 430,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel",
+      "id": "px6",
+      "top": 60,
+      "left": 595,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnCard",
+      "top": 260,
+      "left": -250,
+      "attrs": {
+        "color": "green",
+        "label": "Scan registered card"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnUnknown",
+      "top": 330,
+      "left": -250,
+      "attrs": {
+        "color": "red",
+        "label": "Scan unknown card"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnExit",
+      "top": 400,
+      "left": -250,
+      "attrs": {
+        "color": "blue",
+        "label": "Exit-lane IR"
+      }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "ir",
+      "top": 480,
+      "left": -230,
+      "attrs": {
+        "value": "1"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t1",
+      "top": 520,
+      "left": -260,
+      "attrs": {
+        "text": "IR beam under barrier (left = blocked)"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "esp:TX",
+      "$serialMonitor:RX",
+      "",
+      []
+    ],
+    [
+      "esp:RX",
+      "$serialMonitor:TX",
+      "",
+      []
+    ],
+    [
+      "us1:VCC",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "us1:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "us1:TRIG",
+      "esp:27",
+      "orange",
+      []
+    ],
+    [
+      "us1:ECHO",
+      "esp:34",
+      "blue",
+      []
+    ],
+    [
+      "us2:VCC",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "us2:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "us2:TRIG",
+      "esp:27",
+      "orange",
+      []
+    ],
+    [
+      "us2:ECHO",
+      "esp:35",
+      "blue",
+      []
+    ],
+    [
+      "us3:VCC",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "us3:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "us3:TRIG",
+      "esp:27",
+      "orange",
+      []
+    ],
+    [
+      "us3:ECHO",
+      "esp:32",
+      "blue",
+      []
+    ],
+    [
+      "us4:VCC",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "us4:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "us4:TRIG",
+      "esp:27",
+      "orange",
+      []
+    ],
+    [
+      "us4:ECHO",
+      "esp:33",
+      "blue",
+      []
+    ],
+    [
+      "us5:VCC",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "us5:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "us5:TRIG",
+      "esp:27",
+      "orange",
+      []
+    ],
+    [
+      "us5:ECHO",
+      "esp:25",
+      "blue",
+      []
+    ],
+    [
+      "us6:VCC",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "us6:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "us6:TRIG",
+      "esp:27",
+      "orange",
+      []
+    ],
+    [
+      "us6:ECHO",
+      "esp:26",
+      "blue",
+      []
+    ],
+    [
+      "servo:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "servo:V+",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "servo:PWM",
+      "esp:13",
+      "purple",
+      []
+    ],
+    [
+      "lcd:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "lcd:VCC",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "lcd:SDA",
+      "esp:21",
+      "green",
+      []
+    ],
+    [
+      "lcd:SCL",
+      "esp:22",
+      "yellow",
+      []
+    ],
+    [
+      "px1:VDD",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "px1:VSS",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "px1:DIN",
+      "esp:4",
+      "green",
+      []
+    ],
+    [
+      "px2:VDD",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "px2:VSS",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "px1:DOUT",
+      "px2:DIN",
+      "green",
+      []
+    ],
+    [
+      "px3:VDD",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "px3:VSS",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "px2:DOUT",
+      "px3:DIN",
+      "green",
+      []
+    ],
+    [
+      "px4:VDD",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "px4:VSS",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "px3:DOUT",
+      "px4:DIN",
+      "green",
+      []
+    ],
+    [
+      "px5:VDD",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "px5:VSS",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "px4:DOUT",
+      "px5:DIN",
+      "green",
+      []
+    ],
+    [
+      "px6:VDD",
+      "esp:5V",
+      "red",
+      []
+    ],
+    [
+      "px6:VSS",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "px5:DOUT",
+      "px6:DIN",
+      "green",
+      []
+    ],
+    [
+      "btnCard:1.r",
+      "esp:18",
+      "green",
+      []
+    ],
+    [
+      "btnCard:2.r",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "btnUnknown:1.r",
+      "esp:19",
+      "green",
+      []
+    ],
+    [
+      "btnUnknown:2.r",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "btnExit:1.r",
+      "esp:23",
+      "green",
+      []
+    ],
+    [
+      "btnExit:2.r",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "ir:2",
+      "esp:5",
+      "orange",
+      []
+    ],
+    [
+      "ir:1",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "ir:3",
+      "esp:3V3",
+      "red",
+      []
+    ]
+  ],
+  "dependencies": {}
+}

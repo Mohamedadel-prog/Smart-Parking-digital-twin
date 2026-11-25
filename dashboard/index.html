@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Parking Lot · Digital Twin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">P</div>
+    <div>
+      <h1>Smart Parking Lot <span>Digital Twin</span></h1>
+      <p>Smart City · ESP32 edge (simulated) · MQTT · REST · forecasting</p>
+    </div>
+  </div>
+  <div class="clock">
+    <div id="clockTime">--:--:--</div>
+    <div id="clockDate" class="muted">simulated time</div>
+  </div>
+  <div class="links">
+    <span class="pill" id="pillWs"><i></i>Twin link</span>
+    <span class="pill" id="pillGate"><i></i>Gate node</span>
+    <span class="pill" id="pillZones"><i></i>Zone nodes</span>
+  </div>
+</header>
+
+<main>
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid">
+    <!-- ================= live map ================= -->
+    <div class="card span-8">
+      <div class="card-h">
+        <h2>Live occupancy map</h2>
+        <div class="legend">
+          <span><b class="sw free"></b>Free</span>
+          <span><b class="sw occupied"></b>Occupied</span>
+          <span><b class="sw reserved"></b>Reserved</span>
+          <span><b class="sw maintenance"></b>Maintenance</span>
+          <span><b class="sw fault"></b>Sensor fault</span>
+          <span><b class="sw guide"></b>Guidance</span>
+        </div>
+      </div>
+      <div class="map-wrap"><svg id="map" viewBox="0 0 1000 540" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <p class="hint">Click a slot to inspect its sensor and send commands.</p>
+    </div>
+
+    <!-- ================= side panel ================= -->
+    <div class="side span-4">
+      <div class="card">
+        <div class="card-h"><h2>Entry barrier</h2><span class="tag" id="gateBadge">auto</span></div>
+        <div class="seg" id="gateSeg">
+          <button data-mode="auto">Auto</button>
+          <button data-mode="open">Force open</button>
+          <button data-mode="closed">Force close</button>
+        </div>
+        <dl class="kv" id="gateKv"></dl>
+      </div>
+
+      <div class="card" id="slotCard">
+        <div class="card-h"><h2>Slot <span id="slotTitle">—</span></h2><span class="tag" id="slotBadge">select</span></div>
+        <dl class="kv" id="slotKv"><dt>Tip</dt><dd>Click any slot on the map</dd></dl>
+        <div class="seg small" id="slotSeg">
+          <button data-mode="normal">Normal</button>
+          <button data-mode="reserved">Reserve</button>
+          <button data-mode="maintenance">Maintenance</button>
+        </div>
+        <div class="row-btns">
+          <button class="ghost" id="btnFault">Inject sensor fault</button>
+          <button class="ghost" id="btnClear">Clear fault</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Simulation controls</h2><span class="tag sim">physical layer</span></div>
+        <label class="field">Clock speed
+          <select id="simSpeed">
+            <option value="1">1× real time</option>
+            <option value="30">30×</option>
+            <option value="60" selected>60× (1 s = 1 min)</option>
+            <option value="120">120×</option>
+            <option value="300">300×</option>
+          </select>
+        </label>
+        <label class="field">Demand <output id="demandOut">100%</output>
+          <input type="range" id="simDemand" min="0" max="300" step="10" value="100">
+        </label>
+        <div class="row-btns">
+          <button class="ghost" id="btnRush">Rush: +6 cars</button>
+          <button class="ghost" id="btnPause">Pause</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Alerts</h2><span class="tag" id="alertCount">0</span></div>
+        <ul class="alerts" id="alerts"></ul>
+      </div>
+    </div>
+
+    <!-- ================= forecast ================= -->
+    <div class="card span-8">
+      <div class="card-h">
+        <h2>Occupancy forecast vs actual</h2>
+        <div class="ctrls">
+          <select id="fcMethod">
+            <option value="hybrid">Hybrid (seasonal + level)</option>
+            <option value="seasonal">Seasonal moving average</option>
+            <option value="ma">Moving average (3 h)</option>
+            <option value="prophet">Prophet</option>
+          </select>
+          <select id="fcHorizon">
+            <option value="6">6 h</option>
+            <option value="12" selected>12 h</option>
+            <option value="24">24 h</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart" id="fcChart"></div>
+      <div class="chips" id="fcMetrics"></div>
+    </div>
+
+    <div class="card span-4">
+      <div class="card-h"><h2>Twin fidelity</h2><span class="tag sim">validation</span></div>
+      <div class="fid" id="fidelity"></div>
+      <h3>Edge nodes</h3>
+      <ul class="nodes" id="nodes"></ul>
+    </div>
+
+    <!-- ================= what-if ================= -->
+    <div class="card span-7">
+      <div class="card-h"><h2>What-if simulation</h2><span class="tag">Monte-Carlo · 40 runs</span></div>
+      <div class="whatif">
+        <div class="wi-form">
+          <label class="field">Demand <output id="wiDemandOut">150%</output>
+            <input type="range" id="wiDemand" min="50" max="300" step="10" value="150"></label>
+          <label class="field">Slots closed <output id="wiClosedOut">0</output>
+            <input type="range" id="wiClosed" min="0" max="6" step="1" value="0"></label>
+          <label class="field">Parking time <output id="wiStayOut">100%</output>
+            <input type="range" id="wiStay" min="40" max="200" step="10" value="100"></label>
+          <label class="field">Horizon <output id="wiHoursOut">12 h</output>
+            <input type="range" id="wiHours" min="4" max="24" step="1" value="12"></label>
+          <button class="primary" id="btnWhatIf">Run scenario</button>
+        </div>
+        <div class="wi-out">
+          <div class="chart small" id="wiChart"><div class="empty">Set a scenario and run it — the twin simulates forward from the current lot state.</div></div>
+          <div class="chips" id="wiSummary"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= events ================= -->
+    <div class="card span-5">
+      <div class="card-h"><h2>Entry / exit log</h2><a class="tag link" href="/api/events?limit=200" target="_blank">API ↗</a></div>
+      <div class="events-wrap"><table class="events"><tbody id="events"></tbody></table></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  REST: <a href="/docs" target="_blank">/docs</a> · <a href="/api/state" target="_blank">/api/state</a> ·
+  <a href="/api/forecast" target="_blank">/api/forecast</a> · WebSocket <code>/ws</code>
+</footer>
+
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

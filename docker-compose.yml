@@ -1,0 +1,7 @@
+# Optional: run Mosquitto instead of the embedded Python broker
+#   docker compose up -d   then   python run_all.py --no-broker
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports: ["1883:1883"]
+    volumes: ["./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro"]
